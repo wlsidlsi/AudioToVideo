@@ -14,7 +14,7 @@ from PIL import Image
 def load_audio(wav_file):
    return AudioSegment.from_wav(wav_file)
 
-def create_waveform_clip(audio, image_file, fps=30, duration=10, frame_size=(1280, 720), waveform_height=100, waveform_color='blue'):
+def create_waveform_clip(audio, image_file, fps=30, duration=10, frame_size=(1280, 720), waveform_height=100, waveform_color='blue', glow_color='blue'):
     samples = np.array(audio.get_array_of_samples())
     samples = samples / (np.max(np.abs(samples)) + 1e-10)  # Normalize with epsilon
 
@@ -58,7 +58,7 @@ def create_waveform_clip(audio, image_file, fps=30, duration=10, frame_size=(128
     
         # Create the glow effect by plotting several layers with increasing width and transparency
         for glow_width, glow_alpha in zip(glow_widths, glow_alphas):
-            ax.plot(x_values, scaled_samples + waveform_center, lw=glow_width, color=waveform_color, alpha=glow_alpha)
+            ax.plot(x_values, scaled_samples + waveform_center, lw=glow_width, color=glow_color, alpha=glow_alpha)
     
         # Plot the main waveform on top
         ax.plot(x_values, scaled_samples + waveform_center, lw=2, color=waveform_color)
@@ -96,19 +96,33 @@ def create_waveform_clip(audio, image_file, fps=30, duration=10, frame_size=(128
     return video_clip
 
 # Main function to create the video
-def create_mp4_from_wav_with_waveform(wav_file, image_file, output_file, fps=30, frame_size=(1280, 720), waveform_height=100, waveform_color='blue'):
+def create_mp4_from_wav_with_waveform(wav_file, image_file, output_file, fps=30, frame_size=(1280, 720), waveform_height=100, waveform_color='blue', glow_color='blue'):
     # Load audio and image
     audio = load_audio(wav_file)
     audio_clip = AudioFileClip(wav_file)
 
     # Create the waveform animation synchronized with the audio
-    waveform_clip = create_waveform_clip(audio, image_file, fps=fps, duration=audio_clip.duration, frame_size=frame_size, waveform_height=waveform_height, waveform_color=waveform_color)
+    waveform_clip = create_waveform_clip(audio, image_file, fps=fps, duration=audio_clip.duration, frame_size=frame_size, waveform_height=waveform_height, waveform_color=waveform_color, glow_color=glow_color)
 
     # Combine the waveform with audio
     final_clip = waveform_clip.set_audio(audio_clip)
 
     # Write to file with AAC codec for audio
-    final_clip.write_videofile(output_file, fps=fps, audio_codec='aac')
+    final_clip.write_videofile(output_file, fps=fps, audio_codec='aac', codec="h264_videotoolbox")
 
-# Example usage
-create_mp4_from_wav_with_waveform(sys.argv[2], sys.argv[1], sys.argv[3], frame_size=(1280, 720), waveform_height=100, waveform_color=sys.argv[4])
+# Entry point
+def main():
+    if len(sys.argv) < 4:
+        print("Usage: python script.py <image_file> <audio_file> <output_file> [waveform_color] [glow_color]")
+        sys.exit(1)
+
+    image_file = sys.argv[1]
+    audio_file = sys.argv[2]
+    output_file = sys.argv[3]
+    waveform_color = sys.argv[4] if len(sys.argv) > 4 else 'blue'
+    glow_color = sys.argv[5] if len(sys.argv) > 5 else 'blue'
+
+    create_mp4_from_wav_with_waveform(audio_file, image_file, output_file, frame_size=(1280, 720), waveform_height=100, waveform_color=waveform_color, glow_color=glow_color)
+
+if __name__ == "__main__":
+    main()
